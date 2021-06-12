@@ -1,0 +1,57 @@
+#!/usr/bin/env python3
+import signal, sys, time, random
+from subprocess import Popen, PIPE, DEVNULL
+
+def handler(signum, frame):
+    print('End of time! Bye!', flush=True)
+    sys.exit(1)
+
+signal.signal(signal.SIGALRM, handler)
+signal.alarm(115)
+
+random.seed(time.time())
+
+print('How many lines does your C program have?', flush=True)
+
+try:
+    nlines = int(sys.stdin.readline(), 10)
+except:
+    print("NaN", flush=True)
+    sys.exit(1)
+
+print('Write your program now:', flush=True)
+
+try:
+    user_program = ''.join([sys.stdin.readline() for _ in range(nlines)])
+
+    print("Ok, let's build it!", flush=True)
+
+    gcc = Popen(
+            ['gcc', '-o', '/tmp/executable', '-x', 'c', '-'], 
+            stdin=PIPE, 
+            stderr=PIPE,
+        )
+
+    out = gcc.communicate(input=user_program.encode())
+
+    if gcc.returncode != 0:
+        print('COMPILATION FAILED', flush=True)
+        sys.stdout.buffer.write(out[1])
+        sys.stdout.flush()
+    else:
+        executable = Popen(
+            ['/tmp/executable'],
+            stdin=DEVNULL,
+            stdout=PIPE,
+            stderr=PIPE,
+        )
+        result = b'\n'.join(executable.communicate())
+        sys.stdout.buffer.write(result)
+        sys.stdout.flush()
+except MemoryError:
+    print("Compilation exceeded resource limits, please don't do that!", flush=True)
+    sys.exit(1)
+except Exception as e:
+    print(e)
+    print("Unrecognized error. Try again.", flush=True)
+    sys.exit(1)
